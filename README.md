@@ -11,8 +11,8 @@
 
 1. Clone the repository
 ```bash
-git clone <repository-url>
-cd fft_uber
+git clone https://github.com/beltranaceves/sinusoidal_analyzer.git
+cd sinusoidal_analyzer
 ```
 2. Create a virtual environment
 ```bash
