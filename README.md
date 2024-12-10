@@ -1,5 +1,5 @@
 
-# FFT Uber
+# Sinusoidal analysis
 
 ## Setup Instructions
 
