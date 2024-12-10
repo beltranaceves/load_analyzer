@@ -47,7 +47,7 @@ class ServiceLoadAnalyzer:
     
     def periodicity_analysis(self):
         """
-        Analyze periodicity using autocorrelation and peak detection
+        Analyze periodicity using autocorrelation and peak detection with relaxed constraints
         
         Returns:
         --------
@@ -57,15 +57,21 @@ class ServiceLoadAnalyzer:
         autocorr = correlate(self.load_data, self.load_data, mode='full')
         autocorr = autocorr[len(autocorr)//2:]
         
-        # Find peaks in autocorrelation
-        peaks, _ = find_peaks(autocorr, height=0)
+        # Find peaks with more lenient parameters
+        # Lower height threshold and relaxed distance requirements
+        peaks, _ = find_peaks(autocorr, height=0.1*max(autocorr), distance=10)
         
         # Compute peak distances
         if len(peaks) > 1:
             peak_distances = np.diff(peaks)
+            # Use median instead of mean to be more robust to outliers
+            median_distance = np.median(peak_distances)
+            # Calculate variation coefficient using absolute deviation instead of standard deviation
+            variation = np.mean(np.abs(peak_distances - median_distance)) / median_distance
+            
             peak_regularity = {
-                'mean_period': np.mean(peak_distances),
-                'period_variation_coefficient': np.std(peak_distances) / np.mean(peak_distances)
+                'mean_period': median_distance,
+                'period_variation_coefficient': variation
             }
         else:
             peak_regularity = {
@@ -112,15 +118,14 @@ class ServiceLoadAnalyzer:
         
         # Statistical analysis
         stat_analysis = self.statistical_analysis()
-        
         # Sinusoidal criteria checks
         criteria_met = [
             # Frequency dominance
             freq_analysis['frequency_dominance_ratio'] > (1 - tolerance),
             
-            # Periodicity regularity
+            # Periodicity regularity (with increased tolerance)
             (period_analysis['period_variation_coefficient'] is not None and 
-             period_analysis['period_variation_coefficient'] < tolerance),
+                      period_analysis['period_variation_coefficient'] < tolerance),
             
             # Skewness close to zero
             abs(stat_analysis['skewness']) < tolerance,
@@ -128,14 +133,14 @@ class ServiceLoadAnalyzer:
             # Kurtosis close to 1.5 (for sine wave)
             abs(stat_analysis['kurtosis'] - 1.5) < tolerance
         ]
-        
         # Compile detailed results
         analysis_results = {
             'frequency_analysis': freq_analysis,
             'periodicity_analysis': period_analysis,
             'statistical_analysis': stat_analysis,
             'criteria_met': criteria_met,
-            'sinusoidal_score': np.mean(criteria_met)
+            'sinusoidal_score': np.mean(criteria_met),
+            'is_sinusoidal': np.mean(criteria_met) > (1 - tolerance)
         }
         
         return np.mean(criteria_met) > (1 - tolerance), analysis_results
@@ -173,7 +178,7 @@ class ServiceLoadAnalyzer:
             criteria_labels = ['Frequency\nDominance', 'Periodicity', 'Skewness', 'Kurtosis']
             bars = plt.bar(criteria_labels, analysis_results['criteria_met'])
             plt.title(f'Sinusoidal Characteristics\nScore: {analysis_results["sinusoidal_score"]:.2f} ' + 
-                     f'({"Sinusoidal" if analysis_results["sinusoidal_score"] > 0.5 else "Non-Sinusoidal"})')
+                     f'({"Sinusoidal" if analysis_results["is_sinusoidal"] else "Non-Sinusoidal"})')
             plt.ylabel('Criterion Met')
             plt.ylim(0, 1.2)
             
@@ -214,7 +219,7 @@ if __name__ == "__main__":
     for name, load in loads.items():
         print(f"\nAnalyzing {name} pattern:")
         analyzer = ServiceLoadAnalyzer(load)
-        is_sinusoidal, results = analyzer.is_approximately_sinusoidal(0.5)
+        is_sinusoidal, results = analyzer.is_approximately_sinusoidal(0.4)
         
         print(f"Approximately Sinusoidal: {is_sinusoidal}")
         print(f"Sinusoidal Score: {results['sinusoidal_score']:.2f}")
