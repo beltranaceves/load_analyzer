@@ -47,36 +47,39 @@ class ServiceLoadAnalyzer:
     
     def periodicity_analysis(self):
         """
-        Analyze periodicity using autocorrelation and peak detection with relaxed constraints
-        
-        Returns:
-        --------
-        dict: Detailed periodicity analysis results
+        Analyze periodicity using autocorrelation and peak detection
         """
         # Compute autocorrelation
         autocorr = correlate(self.load_data, self.load_data, mode='full')
         autocorr = autocorr[len(autocorr)//2:]
         
-        # Find peaks with more lenient parameters
-        # Lower height threshold and relaxed distance requirements
-        peaks, _ = find_peaks(autocorr, height=0.1*max(autocorr), distance=10)
+        # Normalize autocorrelation
+        autocorr = autocorr / autocorr[0]
         
-        # Compute peak distances
+        # Find peaks with stricter parameters
+        peaks, properties = find_peaks(autocorr, 
+                                     height=0.2,      # Minimum height threshold
+                                     prominence=0.1)   # Minimum prominence
+        
         if len(peaks) > 1:
             peak_distances = np.diff(peaks)
-            # Use median instead of mean to be more robust to outliers
-            median_distance = np.median(peak_distances)
-            # Calculate variation coefficient using absolute deviation instead of standard deviation
-            variation = np.mean(np.abs(peak_distances - median_distance)) / median_distance
+            peak_heights = properties['peak_heights'][1:]  # Exclude first peak
+            
+            # Calculate regularity using both distance and height variations
+            distance_variation = np.std(peak_distances) / np.mean(peak_distances)
+            height_variation = np.std(peak_heights) / np.mean(peak_heights)
+            
+            # Combined variation coefficient (weighted average)
+            variation_coefficient = (distance_variation + height_variation) / 2
             
             peak_regularity = {
-                'mean_period': median_distance,
-                'period_variation_coefficient': variation
+                'mean_period': np.mean(peak_distances),
+                'period_variation_coefficient': variation_coefficient
             }
         else:
             peak_regularity = {
                 'mean_period': None,
-                'period_variation_coefficient': None
+                'period_variation_coefficient': 1.0  # Set to maximum irregularity
             }
         
         return peak_regularity
