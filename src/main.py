@@ -2,8 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 from scipy.fft import fft
-from scipy.signal import correlate, find_peaks
-
+from scipy.signal import correlate, find_peaks, sawtooth
 class ServiceLoadAnalyzer:
     def __init__(self, load_data, time_intervals=None):
         """
@@ -199,22 +198,46 @@ class ServiceLoadAnalyzer:
 # Example usage demonstration
 def generate_sample_loads():
     """Generate different types of load patterns for testing"""
-    # Pure sinusoidal load
     t = np.linspace(0, 10, 500)
+    
+    # Existing patterns
     pure_sine = 100 + 50 * np.sin(2 * np.pi * t)
-    
-    # Noisy sinusoidal load
     noisy_sine = 100 + 50 * np.sin(2 * np.pi * t) + np.random.normal(0, 10, 500)
-    
-    # Non-sinusoidal load
     random_load = np.cumsum(np.random.normal(0, 10, 500))
+    
+    # New patterns
+    # 1. Loosely sinusoidal (combination of multiple frequencies)
+    loosely_sinusoidal = (100 + 40 * np.sin(2 * np.pi * t) + 
+                         20 * np.sin(4 * np.pi * t) + 
+                         10 * np.random.normal(0, 1, 500))
+    
+    # 2. Daily pattern with peaks (like web traffic)
+    daily_pattern = (100 + 30 * np.sin(2 * np.pi * t) + 
+                    20 * np.abs(np.sin(4 * np.pi * t)) + 
+                    np.random.normal(0, 5, 500))
+    
+    # 3. Sawtooth pattern (like batch processing)
+    sawtooth_pattern = 100 + 50 * sawtooth(2 * np.pi * t) + np.random.normal(0, 5, 500)
+    
+    # 4. Step function with noise (like service deployment)
+    steps = np.repeat([80, 120, 90, 140], 125)
+    step_pattern = steps + np.random.normal(0, 5, 500)
+    
+    # 5. Exponential growth with periodic fluctuation
+    exp_growth = (100 * np.exp(t/10) + 
+                 20 * np.sin(2 * np.pi * t) + 
+                 np.random.normal(0, 10, 500))
     
     return {
         'pure_sine': pure_sine,
         'noisy_sine': noisy_sine,
-        'random_load': random_load
+        'random_load': random_load,
+        'loosely_sinusoidal': loosely_sinusoidal,
+        'daily_pattern': daily_pattern,
+        'sawtooth_pattern': sawtooth_pattern,
+        'step_pattern': step_pattern,
+        'exp_growth': exp_growth
     }
-
 # Demonstration
 if __name__ == "__main__":
     loads = generate_sample_loads()
@@ -222,7 +245,7 @@ if __name__ == "__main__":
     for name, load in loads.items():
         print(f"\nAnalyzing {name} pattern:")
         analyzer = ServiceLoadAnalyzer(load)
-        is_sinusoidal, results = analyzer.is_approximately_sinusoidal(0.4)
+        is_sinusoidal, results = analyzer.is_approximately_sinusoidal(0.5)
         
         print(f"Approximately Sinusoidal: {is_sinusoidal}")
         print(f"Sinusoidal Score: {results['sinusoidal_score']:.2f}")
